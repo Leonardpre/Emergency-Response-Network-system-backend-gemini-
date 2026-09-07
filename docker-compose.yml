@@ -1,0 +1,54 @@
+version: "3.8"
+
+services:
+  # ERN Node.js Backend API
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ern_api
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      - NODE_ENV=production
+      - PORT=5000
+      - MONGODB_URI=mongodb://mongo:27017/emergency_response_network
+      - CORS_ORIGIN=*
+      - JWT_SECRET=emergency_response_network_super_secret_jwt_key_2026
+      - ENABLE_EMAIL_ALERTS=false
+    volumes:
+      - uploads_data:/app/uploads
+    depends_on:
+      mongo:
+        condition: service_healthy
+    networks:
+      - ern_network
+
+  # MongoDB Database with 2dsphere indexing support
+  mongo:
+    image: mongo:7.0
+    container_name: ern_mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - ern_network
+
+volumes:
+  mongo_data:
+    driver: local
+  uploads_data:
+    driver: local
+
+networks:
+  ern_network:
+    driver: bridge
